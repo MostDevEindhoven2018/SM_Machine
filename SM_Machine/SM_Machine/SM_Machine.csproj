@@ -54,8 +54,8 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Customer.cs" />
     <Compile Include="Stock.cs" />
-    <Compile Include="WaitingLine.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -64,7 +64,6 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Customer.cs" />
     <Compile Include="StockItem.cs" />
     <Compile Include="SuperMarket.cs" />
     <Compile Include="MainWindow.xaml.cs">

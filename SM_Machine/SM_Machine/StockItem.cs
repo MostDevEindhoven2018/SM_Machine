@@ -20,6 +20,7 @@ namespace SM_Machine
                 }
             }
         }
+        public bool OrderPlaced { get; set; }
 
         public event Action<int> StockChanged;
 
