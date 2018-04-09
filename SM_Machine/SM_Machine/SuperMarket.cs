@@ -75,7 +75,7 @@ namespace SM_Machine
             {
                 int countCopy = count++;
                 await Task.Delay(1000 + (int) (1000 * (rand.NextDouble())));
-                SMStock[0].Stock--;
+                SMStock[rand.Next(SMStock.Count)].Stock--;
                 Console.WriteLine("Hello, I'm customer No:" + countCopy);
             }
         }
