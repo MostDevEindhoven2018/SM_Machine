@@ -148,6 +148,13 @@ namespace SM_Machine
             AddStockItem(loyalty);
         }
 
+        /// <summary>
+        /// Initialize method that adds an item to the super market.
+        /// This method is not expected to run after initialization.
+        /// This method also adds listeners to the items to ensure 
+        /// orders are placed when the item is about to run out.
+        /// </summary>
+        /// <param name="item"></param>
         private void AddStockItem(StockItem item)
         {
             SMStock.Add(item);
