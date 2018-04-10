@@ -17,6 +17,9 @@ namespace SM_Machine
 
         public Stock SMStock { get => _stock; private set => _stock = value; }
 
+        public long CashFlow { get; set; }
+        public long Profit { get; set; }
+
         public SuperMarket()
         {
             SMStock = new Stock();
@@ -54,6 +57,7 @@ namespace SM_Machine
 
         private async Task Order(StockItem item)
         {
+            const int orderCount = 100;
             bool locking = System.Threading.SynchronizationContext.Current == null;
             bool run = false;
             if (locking)
@@ -63,6 +67,10 @@ namespace SM_Machine
                     if (!item.OrderPlaced)
                     {
                         item.OrderPlaced = true;
+                        lock(this)
+                        {
+                            CashFlow -= item.OrderPrice * orderCount;
+                        }
                         run = true;
                     }
                 }
@@ -82,15 +90,15 @@ namespace SM_Machine
                 {
                     lock (item)
                     {
-                        item.Stock += 10;
+                        item.Stock += orderCount;
                         item.OrderPlaced = false;
                     }
                 } else
                 {
-                    item.Stock += 10;
+                    item.Stock += orderCount;
                     item.OrderPlaced = false;
                 }
-                Console.WriteLine(item.Name + " has arrived");
+                //Console.WriteLine(item.Name + " has arrived");
                 int qCount = _waitingCustomers.Count;
                 for (int i = 0; i < qCount; i++)
                 {
@@ -198,7 +206,7 @@ namespace SM_Machine
             while (true)
             {
                 int countCopy = count++;
-                await Task.Delay(10 + (int)(80 * (rand.NextDouble())));
+                await Task.Delay(1 + (int)(8 * (rand.NextDouble())));
                 StockItem itemToOrder = SMStock[rand.Next(SMStock.Count)];
                 Buy(itemToOrder);
 
@@ -208,16 +216,26 @@ namespace SM_Machine
 
         private void Buy(StockItem itemToOrder)
         {
+            bool bought = false;
             lock (itemToOrder)
             {
                 if (itemToOrder.Stock > 0)
                 {
                     itemToOrder.Stock--;
+                    bought = true;
                 }
                 else
                 {
                     //Console.WriteLine("customer has to wait");
                     _waitingCustomers.Enqueue(itemToOrder);
+                }
+            }
+            if(bought)
+            {
+                lock(this)
+                {
+                    CashFlow += itemToOrder.SellingPrice;
+                    Profit += itemToOrder.SellingPrice - itemToOrder.OrderPrice;
                 }
             }
         }

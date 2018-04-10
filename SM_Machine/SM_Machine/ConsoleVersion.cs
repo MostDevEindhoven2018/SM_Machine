@@ -13,22 +13,24 @@ namespace SM_Machine
         {
             SuperMarket supermarket = new SuperMarket();
             
-            supermarket.SMStock.ItemChanged += () => {
-                PrintStock(supermarket.SMStock);
-            };
+            //supermarket.SMStock.ItemChanged += () => {
+            //    PrintStock(supermarket.SMStock, supermarket.Profit, supermarket.CashFlow);
+            //};
 
             while(true)
             {
-                Thread.Sleep(50000000);
+                Thread.Sleep(500);
+                PrintStock(supermarket.SMStock, supermarket.Profit, supermarket.CashFlow);
             }
         }
 
-        private static void PrintStock(Stock stock)
+        private static void PrintStock(Stock stock, long profit, long cashflow)
         {
             Console.WriteLine("---------------------");
             foreach (var a in stock) {
                 Console.WriteLine(a);
             }
+            Console.WriteLine($"Profit:\t{profit}\nClashFlow:\t{cashflow}");
         }
     }
 }
