@@ -26,7 +26,7 @@ namespace SM_Machine
 
         public override string ToString()
         {
-            return Name + " " + Stock;
+            return Name + ":\t" + Stock;
         }
     }
 }

@@ -8,7 +8,7 @@
         Title="MainWindow" Height="450" Width="800">
     <Grid>
         <DataGrid x:Name="dg_orders" HorizontalAlignment="Left" Height="400" Margin="400,10,0,0" VerticalAlignment="Top" Width="200" RenderTransformOrigin="-1.33,-0.935"/>
-        <ListBox x:Name="lv_items" HorizontalAlignment="Left" Height="400" Margin="10,10,0,0" VerticalAlignment="Top" Width="174" MouseDoubleClick="lv_items_MouseDoubleClick"/>
+        <ListBox x:Name="lv_items" HorizontalAlignment="Left" Height="400" Margin="10,10,0,0" VerticalAlignment="Top" Width="174"/>
 
     </Grid>
 </Window>

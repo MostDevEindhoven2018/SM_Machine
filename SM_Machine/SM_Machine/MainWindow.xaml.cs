@@ -32,10 +32,5 @@ namespace SM_Machine
                 Console.Out.Flush();
             };
         }
-
-        private void lv_items_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            _supermarket.SMStock.Add(new StockItem());
-        }
     }
 }

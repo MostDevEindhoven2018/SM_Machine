@@ -22,18 +22,34 @@ namespace SM_Machine
             SMStock = new Stock();
 
             PopulateItems();
-            SynchronizationContext.Current.Post(async (obj) => {
-                Task t = GenerateCustomer();
-                try
+            if (SynchronizationContext.Current != null)
+            {
+                SynchronizationContext.Current.Post(async (obj) =>
                 {
-                    await t;
-                } catch(Exception e)
+                    await StartGeneration();
+                }, null);
+            } else
+            {
+                Task.Run(async () =>
                 {
-                    Console.WriteLine("Customers caused and exception");
-                    Console.WriteLine(e);
-                }
-            }, null);
+                    await StartGeneration();
+                });
+            }
             //GenerateCustomer();
+        }
+
+        private async Task StartGeneration()
+        {
+            Task t = GenerateCustomer();
+            try
+            {
+                await t;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Customers caused and exception");
+                Console.WriteLine(e);
+            }
         }
 
         private async Task Order(StockItem item)
@@ -64,9 +80,9 @@ namespace SM_Machine
                 await Task.Delay(1000);
                 if (locking)
                 {
-                    item.Stock += 10;
                     lock (item)
                     {
+                        item.Stock += 10;
                         item.OrderPlaced = false;
                     }
                 } else
@@ -130,33 +146,6 @@ namespace SM_Machine
                 Stock = 5,
             };
             AddStockItem(loyalty);
-
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
-            Order(milk);
         }
 
         private void AddStockItem(StockItem item)
@@ -166,20 +155,34 @@ namespace SM_Machine
             {
                 if (value < 3)
                 {
-                    SynchronizationContext.Current.Post(async (obj) => {
-                        Task t = Order(item);
-                        try
+                    bool locking = SynchronizationContext.Current == null;
+                    if (locking)
+                    {
+                        Task.Run(() => RunOrder(item));
+                    }
+                    else
+                    {
+                        SynchronizationContext.Current.Post(async (obj) =>
                         {
-                            await t;
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine("Item ordering caused an exception");
-                            Console.WriteLine(e);
-                        }
-                    }, null);
+                            await RunOrder(item);
+                        }, null);
+                    }
                 }
             };
+        }
+
+        private async Task RunOrder(StockItem item)
+        {
+            Task t = Order(item);
+            try
+            {
+                await t;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Item ordering caused an exception");
+                Console.WriteLine(e);
+            }
         }
 
         private async Task GenerateCustomer()
@@ -198,14 +201,17 @@ namespace SM_Machine
 
         private void Buy(StockItem itemToOrder)
         {
-            if (itemToOrder.Stock > 0)
+            lock (itemToOrder)
             {
-                itemToOrder.Stock--;
-            }
-            else
-            {
-                //Console.WriteLine("customer has to wait");
-                _waitingCustomers.Enqueue(itemToOrder);
+                if (itemToOrder.Stock > 0)
+                {
+                    itemToOrder.Stock--;
+                }
+                else
+                {
+                    //Console.WriteLine("customer has to wait");
+                    _waitingCustomers.Enqueue(itemToOrder);
+                }
             }
         }
     }
