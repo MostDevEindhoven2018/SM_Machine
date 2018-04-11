@@ -20,17 +20,27 @@ namespace SM_Machine
             while(true)
             {
                 Thread.Sleep(500);
-                PrintStock(supermarket.SMStock, supermarket.Profit, supermarket.CashFlow);
+                lock (supermarket)
+                {
+                    PrintStock(supermarket);
+                }
             }
         }
 
-        private static void PrintStock(Stock stock, long profit, long cashflow)
+        static long prevCustArrived = 0;
+
+        private static void PrintStock(SuperMarket sm)
         {
             Console.WriteLine("---------------------");
-            foreach (var a in stock) {
+            foreach (var a in sm.SMStock) {
                 Console.WriteLine(a);
             }
-            Console.WriteLine($"Profit:\t{profit}\nClashFlow:\t{cashflow}");
+            Console.WriteLine($"Profit:\t{sm.Profit}\nClashFlow:\t{sm.CashFlow}");
+            Console.WriteLine($"Cust in Line:\t{sm.WaitingForCheckoutCustomers.Count}");
+            long arrived = sm.CustomersArrived;
+            Console.WriteLine($"Helped: {sm.CustomersHelped}, Arrived: {arrived}, In store {sm.WaitingForProductCustomers.Count}");
+            Console.WriteLine($"Arrived per sec: {(arrived - prevCustArrived) *2}");
+            prevCustArrived = arrived;
         }
     }
 }

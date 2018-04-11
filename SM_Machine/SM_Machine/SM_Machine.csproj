@@ -67,6 +67,8 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Cashiere.cs" />
+    <Compile Include="Chief.cs" />
     <Compile Include="ConsoleVersion.cs" />
     <Compile Include="Stock.cs" />
     <Page Include="MainWindow.xaml">

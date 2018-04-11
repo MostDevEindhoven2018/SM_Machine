@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -9,102 +11,49 @@ using System.Threading.Tasks;
 
 namespace SM_Machine
 {
-    class SuperMarket
+    public class SuperMarket
     {
-        public static Random rand = new Random();
+        public static Random Rand { get; private set; } = new Random();
         private Stock _stock;
-        private Queue<StockItem> _waitingCustomers = new Queue<StockItem>();
+        public ConcurrentQueue<StockItem> WaitingForProductCustomers { get; private set; } = new ConcurrentQueue<StockItem>();
+        public BlockingCollection<StockItem> WaitingForCheckoutCustomers { get; private set; } = new BlockingCollection<StockItem>();
 
         public Stock SMStock { get => _stock; private set => _stock = value; }
 
         public long CashFlow { get; set; }
         public long Profit { get; set; }
 
+        public long CustomersArrived { get; private set; } = 0;
+        public long CustomersHelped { get; set; } = 0;
+
+        private Chief Chief;
+        private List<Cashiere> _cashieres;
+        private Timer custTimer;
+
         public SuperMarket()
         {
             SMStock = new Stock();
 
             PopulateItems();
+            Chief = new Chief(this);
+            _cashieres = new List<Cashiere>();
+            const int cashiereCount = 51;
+            for (int i = 0; i < cashiereCount; i++)
+            {
+                _cashieres.Add(new Cashiere(this));
+            }
+            //_cashieres.Add(new Cashiere(this));
+
             if (SynchronizationContext.Current != null)
             {
-                SynchronizationContext.Current.Post(async (obj) =>
+                SynchronizationContext.Current.Post((obj) =>
                 {
-                    await StartGeneration();
+                    GenerateCustomer();
                 }, null);
-            } else
-            {
-                Task.Run(async () =>
-                {
-                    await StartGeneration();
-                });
             }
-            //GenerateCustomer();
-        }
-
-        private async Task StartGeneration()
-        {
-            Task t = GenerateCustomer();
-            try
+            else
             {
-                await t;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Customers caused and exception");
-                Console.WriteLine(e);
-            }
-        }
-
-        private async Task Order(StockItem item)
-        {
-            const int orderCount = 100;
-            bool locking = System.Threading.SynchronizationContext.Current == null;
-            bool run = false;
-            if (locking)
-            {
-                lock (item)
-                {
-                    if (!item.OrderPlaced)
-                    {
-                        item.OrderPlaced = true;
-                        lock(this)
-                        {
-                            CashFlow -= item.OrderPrice * orderCount;
-                        }
-                        run = true;
-                    }
-                }
-            } else
-            {
-                if (!item.OrderPlaced)
-                {
-                    item.OrderPlaced = true;
-                    run = true;
-                }
-            }
-
-            if (run)
-            {
-                await Task.Delay(1000);
-                if (locking)
-                {
-                    lock (item)
-                    {
-                        item.Stock += orderCount;
-                        item.OrderPlaced = false;
-                    }
-                } else
-                {
-                    item.Stock += orderCount;
-                    item.OrderPlaced = false;
-                }
-                //Console.WriteLine(item.Name + " has arrived");
-                int qCount = _waitingCustomers.Count;
-                for (int i = 0; i < qCount; i++)
-                {
-                    StockItem qItem = _waitingCustomers.Dequeue();
-                    Buy(qItem);
-                }
+                GenerateCustomer();
             }
         }
 
@@ -166,52 +115,54 @@ namespace SM_Machine
         private void AddStockItem(StockItem item)
         {
             SMStock.Add(item);
-            item.StockChanged += (value) =>
+        }
+
+        private void GenerateCustomer()
+        {
+            bool useStopWatch = true;
+            if (!useStopWatch)
             {
-                if (value < 3)
+                custTimer = new Timer((a) =>
                 {
-                    bool locking = SynchronizationContext.Current == null;
-                    if (locking)
+                    Task.Delay((int)(18 * (Rand.NextDouble()))).ContinueWith((_) =>
                     {
-                        Task.Run(() => RunOrder(item));
-                    }
-                    else
+                        CustomerEntersStore();
+                    });
+                }, null, 100, 100);
+            }
+            else
+            {
+                Stopwatch stopwatch = new Stopwatch();
+                const int maxRand = 41;
+                const int custPerTick = 1;
+                long prevMS = 0;
+                long tillNextMs = Rand.Next(maxRand);
+                stopwatch.Start();
+                custTimer = new Timer((a) =>
+                {
+                    long now = stopwatch.ElapsedMilliseconds;
+                    long ellapsed = now - prevMS;
+
+                    while (ellapsed >= tillNextMs)
                     {
-                        SynchronizationContext.Current.Post(async (obj) =>
+                        ellapsed -= tillNextMs;
+                        for (int i = 0; i < custPerTick; i++)
                         {
-                            await RunOrder(item);
-                        }, null);
+                            CustomerEntersStore();
+                        }
+                        tillNextMs = Rand.Next(maxRand); ;
                     }
-                }
-            };
-        }
-
-        private async Task RunOrder(StockItem item)
-        {
-            Task t = Order(item);
-            try
-            {
-                await t;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Item ordering caused an exception");
-                Console.WriteLine(e);
+                    tillNextMs -= ellapsed;
+                    prevMS = now;
+                }, null, 200, 200);
             }
         }
 
-        private async Task GenerateCustomer()
+        private void CustomerEntersStore()
         {
-            int count = 0;
-            while (true)
-            {
-                int countCopy = count++;
-                await Task.Delay(1 + (int)(8 * (rand.NextDouble())));
-                StockItem itemToOrder = SMStock[rand.Next(SMStock.Count)];
-                Buy(itemToOrder);
-
-                //Console.WriteLine("Hello, I'm customer No:" + countCopy);
-            }
+            CustomersArrived++;
+            StockItem itemToOrder = SMStock[Rand.Next(SMStock.Count)];
+            Buy(itemToOrder);
         }
 
         private void Buy(StockItem itemToOrder)
@@ -227,16 +178,25 @@ namespace SM_Machine
                 else
                 {
                     //Console.WriteLine("customer has to wait");
-                    _waitingCustomers.Enqueue(itemToOrder);
+                    WaitingForProductCustomers.Enqueue(itemToOrder);
                 }
             }
-            if(bought)
+            if (bought)
             {
-                lock(this)
-                {
-                    CashFlow += itemToOrder.SellingPrice;
-                    Profit += itemToOrder.SellingPrice - itemToOrder.OrderPrice;
-                }
+                WaitingForCheckoutCustomers.Add(itemToOrder);
+            }
+        }
+
+        public void CheckCustomersWaitingInStore()
+        {
+            int count = WaitingForProductCustomers.Count;
+            for (int i = 0; i < count && (WaitingForProductCustomers.TryDequeue(out StockItem item)); i++)
+            {
+                Buy(item);
+            }
+            if (WaitingForProductCustomers.Count >= count)
+            {
+                Console.WriteLine("wtf");
             }
         }
     }
